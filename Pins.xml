@@ -1,0 +1,16 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <Frame name="ForgedForeverMapNotesPinTemplate" mixin="ForgedForeverMapNotesPinMixin" enableMouse="true" virtual="true">
+        <Size x="16" y="16"/>
+        <Layers>
+            <Layer level="ARTWORK">
+                <Texture parentKey="Icon" setAllPoints="true"/>
+            </Layer>
+        </Layers>
+        <Scripts>
+            <OnLoad method="OnLoad"/>
+            <OnEnter method="OnMouseEnter"/>
+            <OnLeave method="OnMouseLeave"/>
+            <OnMouseUp method="OnMouseUp"/>
+        </Scripts>
+    </Frame>
+</Ui>

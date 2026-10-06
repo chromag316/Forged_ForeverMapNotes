@@ -1,0 +1,13 @@
+## Interface: 16001
+## Title: Forged Forever Map Notes
+## Notes: Personal map notes and gathering node log for the world map.
+## Author: Chromag
+## Version: 0.0.1
+## SavedVariables: ForgedForeverMapNotesDB
+
+Core.lua
+Pins.lua
+Pins.xml
+Dialogs.lua
+Filter.lua
+Gathering.lua
