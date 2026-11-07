@@ -6,11 +6,12 @@
                 <Texture parentKey="Icon" setAllPoints="true"/>
             </Layer>
         </Layers>
+        <!-- No OnEnter/OnLeave/OnMouseUp here: the map canvas installs its
+             own and calls the mixin's OnMouseEnter/OnMouseLeave/OnMouseUp.
+             It asserts these are unset when it creates a pin, and that
+             error broke the first pin drawn after a reload. -->
         <Scripts>
             <OnLoad method="OnLoad"/>
-            <OnEnter method="OnMouseEnter"/>
-            <OnLeave method="OnMouseLeave"/>
-            <OnMouseUp method="OnMouseUp"/>
         </Scripts>
     </Frame>
 </Ui>
