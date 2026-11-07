@@ -17,10 +17,29 @@ local function SaveNew(dialog, data)
     end
 end
 
-local function SaveEdit(dialog, data)
+local function GetButton(dialog, index)
+    return (dialog.GetButton and dialog:GetButton(index))
+        or dialog["button" .. index]
+        or (dialog.GetName and dialog:GetName() and _G[dialog:GetName() .. "Button" .. index])
+end
+
+-- True when the edit box holds a non-empty title that differs from the note's.
+local function HasEditChanges(dialog, data)
+    local note = data and ns:GetNote(data.mapID, data.noteID)
     local text = GetText(dialog)
-    if text ~= "" then
-        ns:UpdateNote(data.mapID, data.noteID, text)
+    return note ~= nil and text ~= "" and text ~= strtrim(note.title or "")
+end
+
+local function UpdateSaveButton(dialog, data)
+    local button = GetButton(dialog, 3)
+    if button then
+        button:SetEnabled(HasEditChanges(dialog, data))
+    end
+end
+
+local function SaveEdit(dialog, data)
+    if HasEditChanges(dialog, data) then
+        ns:UpdateNote(data.mapID, data.noteID, GetText(dialog))
     end
 end
 
@@ -73,6 +92,11 @@ StaticPopupDialogs["FORGEDFOREVERMAPNOTES_EDIT"] = {
         editBox:SetText(note and note.title or "")
         editBox:SetFocus()
         editBox:HighlightText()
+        UpdateSaveButton(self, data)
+    end,
+    -- Save stays disabled until the title actually changes.
+    EditBoxOnTextChanged = function(editBox, data)
+        UpdateSaveButton(editBox:GetParent(), data)
     end,
     OnCancel = function(self, data, reason)
         if reason ~= "clicked" then return end
