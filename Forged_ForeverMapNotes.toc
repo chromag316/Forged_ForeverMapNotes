@@ -2,12 +2,14 @@
 ## Title: Forged Forever Map Notes
 ## Notes: Personal map notes and gathering node log for the world map.
 ## Author: Chromag
-## Version: 0.0.1
+## Version: 1.0.1
 ## SavedVariables: ForgedForeverMapNotesDB
 
 Core.lua
+Icons.lua
 Pins.lua
 Pins.xml
 Dialogs.lua
 Filter.lua
 Gathering.lua
+Vendors.lua

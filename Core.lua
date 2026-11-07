@@ -5,6 +5,7 @@ ns.CATEGORIES = {
     { key = "mining",   label = "Mining",    icon = "Interface\\Icons\\Trade_Mining" },
     { key = "herb",     label = "Herbalism", icon = "Interface\\Icons\\Trade_Herbalism" },
     { key = "treasure", label = "Treasure",  icon = "Interface\\Icons\\INV_Box_01" },
+    { key = "recipe",   label = "Recipe Vendors", icon = "Interface\\Icons\\INV_Scroll_03" },
 }
 
 ns.CATEGORY_BY_KEY = {}
@@ -15,7 +16,7 @@ end
 local DEFAULTS = {
     version = 1,
     nextID = 1,
-    notes = {},   -- [mapID] = { [noteID] = { x, y, title, category, created } }
+    notes = {},   -- [mapID] = { [noteID] = { x, y, title, category, created, npc?, items? } }
     hidden = {},  -- [categoryKey] = true when hidden on the map
     autoLog = true,
     debug = false,
@@ -127,8 +128,8 @@ end
 local function PrintHelp()
     ns:Print("Ctrl+Right-click the world map to add a note. Right-click a note to edit or delete it.")
     print("  /fmn add <text>  - add a note at your position")
-    print("  /fmn show|hide <notes|mining|herb|treasure>")
-    print("  /fmn auto on|off - toggle automatic gathering log")
+    print("  /fmn show|hide <notes|mining|herb|treasure|recipes>")
+    print("  /fmn auto on|off - toggle automatic gathering and recipe vendor log")
     print("  /fmn debug       - toggle debug output (shows spell names/IDs)")
     print("  /fmn count       - number of stored notes")
 end
@@ -151,15 +152,16 @@ SlashCmdList.FORGEDFOREVERMAPNOTES = function(input)
     elseif cmd == "show" or cmd == "hide" then
         local key = rest:lower()
         if key == "notes" then key = "note" end
+        if key == "recipes" then key = "recipe" end
         if not ns.CATEGORY_BY_KEY[key] then
-            ns:Print("Unknown category. Use notes, mining, herb or treasure.")
+            ns:Print("Unknown category. Use notes, mining, herb, treasure or recipes.")
             return
         end
         ns:SetCategoryShown(key, cmd == "show")
         ns:Print(("%s %s."):format(ns.CATEGORY_BY_KEY[key].label, cmd == "show" and "shown" or "hidden"))
     elseif cmd == "auto" then
         ns.db.autoLog = rest:lower() ~= "off"
-        ns:Print("Automatic gathering log " .. (ns.db.autoLog and "on." or "off."))
+        ns:Print("Automatic gathering and vendor log " .. (ns.db.autoLog and "on." or "off."))
     elseif cmd == "debug" then
         ns.db.debug = not ns.db.debug
         ns:Print("Debug " .. (ns.db.debug and "on." or "off."))
