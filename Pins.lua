@@ -36,10 +36,21 @@ function ForgedForeverMapNotesPinMixin:OnMouseEnter()
     GameTooltip:AddLine(("%.1f, %.1f"):format(note.x * 100, note.y * 100), 0.8, 0.8, 0.8)
     GameTooltip:AddLine("Right-click to edit", 0.5, 0.5, 0.5)
     GameTooltip:Show()
+    ns.hoveredPin = self
 end
 
 function ForgedForeverMapNotesPinMixin:OnMouseLeave()
     GameTooltip:Hide()
+    if ns.hoveredPin == self then
+        ns.hoveredPin = nil
+    end
+end
+
+function ForgedForeverMapNotesPinMixin:OnReleased()
+    if ns.hoveredPin == self then
+        ns.hoveredPin = nil
+        GameTooltip:Hide()
+    end
 end
 
 function ForgedForeverMapNotesPinMixin:OnMouseUp(button)
@@ -69,10 +80,20 @@ function provider:RefreshAllData(fromOnShow)
     end
 end
 
--- Ctrl+Right-click on the map canvas opens the "new note" dialog.
+-- The map makes pins pass right-clicks through to the canvas (where they zoom
+-- out), so a right-click on one of our pins arrives here: open its editor.
+-- Ctrl+Right-click elsewhere on the canvas opens the "new note" dialog.
 -- Returning true stops the default right-click (zoom out).
 local function OnCanvasClick(canvas, button, cursorX, cursorY)
-    if button ~= "RightButton" or not IsControlKeyDown() then
+    if button ~= "RightButton" then
+        return false
+    end
+    local pin = ns.hoveredPin
+    if pin and pin:IsShown() and pin:IsMouseOver() then
+        ns:ShowEditDialog(pin.mapID, pin.noteID)
+        return true
+    end
+    if not IsControlKeyDown() then
         return false
     end
     if not (cursorX and cursorY) then
