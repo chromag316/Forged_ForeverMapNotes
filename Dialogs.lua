@@ -26,8 +26,11 @@ end
 
 StaticPopupDialogs["FORGEDFOREVERMAPNOTES_ADD"] = {
     text = "New map note:",
-    button1 = ACCEPT,
-    button2 = CANCEL,
+    -- Buttons are laid out left to right: Cancel, Accept. Accept sits in the
+    -- button3 slot (-> OnAlt) so it is never triggered by Escape, which runs
+    -- OnCancel.
+    button1 = CANCEL,
+    button3 = ACCEPT,
     hasEditBox = true,
     maxLetters = 200,
     editBoxWidth = 260,
@@ -36,7 +39,7 @@ StaticPopupDialogs["FORGEDFOREVERMAPNOTES_ADD"] = {
         editBox:SetText("")
         editBox:SetFocus()
     end,
-    OnAccept = SaveNew,
+    OnAlt = SaveNew,
     EditBoxOnEnterPressed = function(editBox, data)
         local dialog = editBox:GetParent()
         SaveNew(dialog, data)
@@ -70,7 +73,12 @@ StaticPopupDialogs["FORGEDFOREVERMAPNOTES_EDIT"] = {
     end,
     OnAccept = function(self, data)
         local note = ns:GetNote(data.mapID, data.noteID)
+        -- Close the edit dialog first so the confirmation takes its place
+        -- instead of stacking below it. Returning true keeps the popup code
+        -- from hiding the frame again (it may now hold the confirmation).
+        self:Hide()
         StaticPopup_Show("FORGEDFOREVERMAPNOTES_DELETE", note and note.title or "", nil, data)
+        return true
     end,
     OnAlt = SaveEdit,
     EditBoxOnEnterPressed = function(editBox, data)
