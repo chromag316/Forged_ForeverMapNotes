@@ -53,9 +53,11 @@ StaticPopupDialogs["FORGEDFOREVERMAPNOTES_ADD"] = {
 
 StaticPopupDialogs["FORGEDFOREVERMAPNOTES_EDIT"] = {
     text = "Edit map note:",
-    button1 = SAVE,
+    -- Buttons are laid out left to right: Delete, Cancel, Save.
+    -- button1 -> OnAccept, button2 -> OnCancel, button3 -> OnAlt.
+    button1 = DELETE,
     button2 = CANCEL,
-    button3 = DELETE,
+    button3 = SAVE,
     hasEditBox = true,
     maxLetters = 200,
     editBoxWidth = 260,
@@ -66,11 +68,11 @@ StaticPopupDialogs["FORGEDFOREVERMAPNOTES_EDIT"] = {
         editBox:SetFocus()
         editBox:HighlightText()
     end,
-    OnAccept = SaveEdit,
-    OnAlt = function(self, data)
+    OnAccept = function(self, data)
         local note = ns:GetNote(data.mapID, data.noteID)
         StaticPopup_Show("FORGEDFOREVERMAPNOTES_DELETE", note and note.title or "", nil, data)
     end,
+    OnAlt = SaveEdit,
     EditBoxOnEnterPressed = function(editBox, data)
         local dialog = editBox:GetParent()
         SaveEdit(dialog, data)
