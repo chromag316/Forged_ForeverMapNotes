@@ -6,7 +6,7 @@ local function ShowFilterMenu(owner)
         return
     end
     MenuUtil.CreateContextMenu(owner, function(_, root)
-        root:CreateTitle("Forged Forever Map Notes")
+        root:CreateTitle("Map Notes")
         for _, category in ipairs(ns.CATEGORIES) do
             root:CreateCheckbox(category.label,
                 function() return ns:IsCategoryShown(category.key) end,
@@ -32,7 +32,7 @@ function ns:SetupFilterButton()
     button:SetScript("OnClick", ShowFilterMenu)
     button:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:SetText("Forged Forever Map Notes", 1, 1, 1)
+        GameTooltip:SetText("Map Notes", 1, 1, 1)
         GameTooltip:AddLine("Click to filter notes.", 0.8, 0.8, 0.8)
         GameTooltip:AddLine("Ctrl+Right-click the map to add a note.", 0.8, 0.8, 0.8)
         GameTooltip:Show()
