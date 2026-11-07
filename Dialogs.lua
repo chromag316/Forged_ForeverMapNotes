@@ -55,12 +55,15 @@ StaticPopupDialogs["FORGEDFOREVERMAPNOTES_ADD"] = {
 }
 
 StaticPopupDialogs["FORGEDFOREVERMAPNOTES_EDIT"] = {
-    text = "Edit map note:",
-    -- Buttons are laid out left to right: Delete, Cancel, Save.
+    text = "Edit map note",
+    -- Buttons are laid out left to right: Cancel, Delete, Save.
     -- button1 -> OnAccept, button2 -> OnCancel, button3 -> OnAlt.
-    button1 = DELETE,
-    button2 = CANCEL,
+    -- Escape also runs OnCancel unless noCancelOnEscape is set, so it is set
+    -- to keep Escape from starting a delete.
+    button1 = CANCEL,
+    button2 = DELETE,
     button3 = SAVE,
+    noCancelOnEscape = true,
     hasEditBox = true,
     maxLetters = 200,
     editBoxWidth = 260,
@@ -71,13 +74,21 @@ StaticPopupDialogs["FORGEDFOREVERMAPNOTES_EDIT"] = {
         editBox:SetFocus()
         editBox:HighlightText()
     end,
-    OnAccept = function(self, data)
+    OnCancel = function(self, data, reason)
+        if reason ~= "clicked" then return end
         local note = ns:GetNote(data.mapID, data.noteID)
         -- Close the edit dialog first so the confirmation takes its place
-        -- instead of stacking below it. Returning true keeps the popup code
-        -- from hiding the frame again (it may now hold the confirmation).
+        -- instead of stacking below it, and line its bottom (and so its
+        -- buttons) up with where the edit dialog's was. Returning true keeps
+        -- the popup code from hiding the frame again (it may now hold the
+        -- confirmation).
+        local x, bottom = self:GetCenter(), self:GetBottom()
         self:Hide()
-        StaticPopup_Show("FORGEDFOREVERMAPNOTES_DELETE", note and note.title or "", nil, data)
+        local confirm = StaticPopup_Show("FORGEDFOREVERMAPNOTES_DELETE", note and note.title or "", nil, data)
+        if confirm and x and bottom then
+            confirm:ClearAllPoints()
+            confirm:SetPoint("BOTTOM", UIParent, "BOTTOMLEFT", x, bottom)
+        end
         return true
     end,
     OnAlt = SaveEdit,
