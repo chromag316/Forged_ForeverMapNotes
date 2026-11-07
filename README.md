@@ -2,7 +2,7 @@
 
 `Forever Map Notes` is a standalone map notes addon for World of Warcraft Forever.
 
-It adds manual map notes, edit/delete dialogs, map coordinates, and automatic node notes for mining, herbalism, and treasure chests.
+It adds manual map notes, edit/delete dialogs, map coordinates, and automatic node notes for mining, herbalism, and treasure chests, plus vendors that sell recipes.
 
 ## Install
 
@@ -15,8 +15,10 @@ and enable it on the character select screen.
 - **Right-click** a note: edit or delete it.
 - Note button in the map's bottom-left corner: show/hide categories, toggle auto-logging.
 - Mining, herb and treasure gathers are logged automatically.
+- Vendors that sell recipes are logged when you open their window. The note's
+  tooltip lists every recipe seen there.
 
-Slash commands: `/fmn add <text>`, `/fmn show|hide <notes|mining|herb|treasure>`,
+Slash commands: `/fmn add <text>`, `/fmn show|hide <notes|mining|herb|treasure|recipes>`,
 `/fmn auto on|off`, `/fmn debug`, `/fmn count`.
 
 ## Known unknowns (beta)

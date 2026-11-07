@@ -13,7 +13,7 @@ local function ShowFilterMenu(owner)
                 function() ns:SetCategoryShown(category.key, not ns:IsCategoryShown(category.key)) end)
         end
         root:CreateDivider()
-        root:CreateCheckbox("Auto-log gathering",
+        root:CreateCheckbox("Auto-log gathering and vendors",
             function() return ns.db.autoLog end,
             function() ns.db.autoLog = not ns.db.autoLog end)
     end)

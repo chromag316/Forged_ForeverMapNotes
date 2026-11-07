@@ -1,6 +1,7 @@
 local addonName, ns = ...
 
 local PIN_TEMPLATE = "ForgedForeverMapNotesPinTemplate"
+local MAX_TOOLTIP_ITEMS = 20
 
 -- Pin ------------------------------------------------------------------------
 
@@ -13,8 +14,7 @@ end
 
 function ForgedForeverMapNotesPinMixin:OnAcquired(mapID, noteID, note)
     self.mapID, self.noteID, self.note = mapID, noteID, note
-    local category = ns.CATEGORY_BY_KEY[note.category] or ns.CATEGORY_BY_KEY.note
-    self.Icon:SetTexture(category.icon)
+    self.Icon:SetTexture(ns:GetNoteIcon(note))
     self:SetPosition(note.x, note.y)
 end
 
@@ -24,6 +24,15 @@ function ForgedForeverMapNotesPinMixin:OnMouseEnter()
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
     GameTooltip:SetText(note.title ~= "" and note.title or category.label, 1, 1, 1)
     GameTooltip:AddLine(category.label, 0.6, 0.8, 1)
+    if note.items then
+        for i, name in ipairs(note.items) do
+            if i > MAX_TOOLTIP_ITEMS then
+                GameTooltip:AddLine(("+%d more"):format(#note.items - MAX_TOOLTIP_ITEMS), 0.7, 0.7, 0.7)
+                break
+            end
+            GameTooltip:AddLine(name, 1, 0.82, 0)
+        end
+    end
     GameTooltip:AddLine(("%.1f, %.1f"):format(note.x * 100, note.y * 100), 0.8, 0.8, 0.8)
     GameTooltip:AddLine("Right-click to edit", 0.5, 0.5, 0.5)
     GameTooltip:Show()
