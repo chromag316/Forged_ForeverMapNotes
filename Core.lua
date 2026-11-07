@@ -13,6 +13,7 @@ for _, category in ipairs(ns.CATEGORIES) do
     ns.CATEGORY_BY_KEY[category.key] = category
 end
 
+-- Account-wide data (ForgedForeverMapNotesDB).
 local DEFAULTS = {
     version = 1,
     nextID = 1,
@@ -20,7 +21,21 @@ local DEFAULTS = {
     hidden = {},  -- [categoryKey] = true when hidden on the map
     autoLog = true,
     debug = false,
+    knownBatch = 0, -- last Data/KnownNodes.lua batch imported
 }
+
+-- Per-character data (ForgedForeverMapNotesCharDB).
+local CHAR_DEFAULTS = {
+    nextID = 1,
+    notes = {},   -- same shape as DEFAULTS.notes
+}
+
+-- Categories stored per character; everything else is account-wide.
+local CHAR_CATEGORIES = { recipe = true }
+
+-- Per-character note IDs are strings ("c1", "c2", ...) so they never clash
+-- with the numeric account-wide IDs and the owning store follows from the ID.
+local CHAR_ID_PREFIX = "c"
 
 function ns:Print(msg)
     print("|cff66ccffForgedForeverMapNotes|r: " .. tostring(msg))
@@ -32,41 +47,134 @@ function ns:Debug(msg)
     end
 end
 
-local function InitDB()
-    ForgedForeverMapNotesDB = ForgedForeverMapNotesDB or {}
-    for key, value in pairs(DEFAULTS) do
-        if ForgedForeverMapNotesDB[key] == nil then
-            ForgedForeverMapNotesDB[key] = type(value) == "table" and {} or value
+local function ApplyDefaults(db, defaults)
+    for key, value in pairs(defaults) do
+        if db[key] == nil then
+            db[key] = type(value) == "table" and {} or value
         end
     end
+    return db
+end
+
+local function StoreForCategory(category)
+    return CHAR_CATEGORIES[category] and ns.charDB or ns.db
+end
+
+local function StoreForID(noteID)
+    return type(noteID) == "string" and ns.charDB or ns.db
+end
+
+local function NewNoteID(store)
+    local n = store.nextID
+    store.nextID = n + 1
+    return store == ns.charDB and (CHAR_ID_PREFIX .. n) or n
+end
+
+-- Moves notes between stores when their category's scope doesn't match
+-- (e.g. recipe vendors logged account-wide before 1.0.1 go to the first
+-- character that logs in). Runs every load; it's a no-op once settled.
+local function MigrateNotes()
+    for mapID, notes in pairs(ns.db.notes) do
+        for noteID, note in pairs(notes) do
+            if CHAR_CATEGORIES[note.category] then
+                notes[noteID] = nil
+                ns.charDB.notes[mapID] = ns.charDB.notes[mapID] or {}
+                ns.charDB.notes[mapID][NewNoteID(ns.charDB)] = note
+            end
+        end
+        if next(notes) == nil then
+            ns.db.notes[mapID] = nil
+        end
+    end
+end
+
+local ImportKnownNodes -- defined below, after the note helpers it uses
+
+local function InitDB()
+    ForgedForeverMapNotesDB = ApplyDefaults(ForgedForeverMapNotesDB or {}, DEFAULTS)
+    ForgedForeverMapNotesCharDB = ApplyDefaults(ForgedForeverMapNotesCharDB or {}, CHAR_DEFAULTS)
     ns.db = ForgedForeverMapNotesDB
+    ns.charDB = ForgedForeverMapNotesCharDB
+    MigrateNotes()
+    ImportKnownNodes()
 end
 
 -- Notes ---------------------------------------------------------------------
 
+-- Returns all notes on mapID from both stores as { [noteID] = note }, or nil.
+-- The table is new; the notes in it are the stored ones.
 function ns:GetNotes(mapID)
-    return mapID and ns.db.notes[mapID] or nil
+    if not mapID then return end
+    local account, char = ns.db.notes[mapID], ns.charDB.notes[mapID]
+    if not char then return account end
+    if not account then return char end
+    local merged = {}
+    for noteID, note in pairs(account) do merged[noteID] = note end
+    for noteID, note in pairs(char) do merged[noteID] = note end
+    return merged
 end
 
 function ns:GetNote(mapID, noteID)
-    local notes = ns:GetNotes(mapID)
+    local notes = mapID and noteID and StoreForID(noteID).notes[mapID]
     return notes and notes[noteID] or nil
+end
+
+local function InsertNote(mapID, x, y, title, category)
+    category = category or "note"
+    local store = StoreForCategory(category)
+    local noteID = NewNoteID(store)
+    local note = {
+        x = x,
+        y = y,
+        title = title or "",
+        category = category,
+        created = time(),
+    }
+    store.notes[mapID] = store.notes[mapID] or {}
+    store.notes[mapID][noteID] = note
+    return noteID, note
 end
 
 function ns:AddNote(mapID, x, y, title, category)
     if not (mapID and x and y) then return end
-    local noteID = ns.db.nextID
-    ns.db.nextID = noteID + 1
-    ns.db.notes[mapID] = ns.db.notes[mapID] or {}
-    ns.db.notes[mapID][noteID] = {
-        x = x,
-        y = y,
-        title = title or "",
-        category = category or "note",
-        created = time(),
-    }
+    local noteID = InsertNote(mapID, x, y, title, category)
     ns:RefreshPins()
     return noteID
+end
+
+-- Known nodes ---------------------------------------------------------------
+
+-- Same radius the gathering log uses to treat two logs as one node.
+local KNOWN_DUPLICATE_RADIUS = 0.005
+
+-- Copies shipped nodes (Data/KnownNodes.lua) into the account notes. Each
+-- batch is imported once, so a node the player deletes stays deleted and a
+-- new addon version only brings in the batches added since. Nodes already
+-- noted nearby are skipped.
+function ImportKnownNodes()
+    local known = ns.KNOWN_NODES
+    if not known then return end
+    local done = ns.db.knownBatch
+    local latest, added = done, 0
+    for batch, maps in pairs(known) do
+        if batch > done then
+            for mapID, nodes in pairs(maps) do
+                for _, node in ipairs(nodes) do
+                    local x, y, category, title = node[1], node[2], node[3], node[4]
+                    if not ns:HasNoteNear(mapID, x, y, category, title, KNOWN_DUPLICATE_RADIUS) then
+                        local _, note = InsertNote(mapID, x, y, title, category)
+                        note.known = true
+                        added = added + 1
+                    end
+                end
+            end
+            if batch > latest then latest = batch end
+        end
+    end
+    ns.db.knownBatch = latest
+    if added > 0 then
+        ns:Print(("Added %d known gathering node(s) to the map."):format(added))
+    end
 end
 
 function ns:UpdateNote(mapID, noteID, title)
@@ -77,13 +185,24 @@ function ns:UpdateNote(mapID, noteID, title)
 end
 
 function ns:DeleteNote(mapID, noteID)
-    local notes = ns:GetNotes(mapID)
+    local store = StoreForID(noteID)
+    local notes = mapID and store.notes[mapID]
     if not (notes and notes[noteID]) then return end
     notes[noteID] = nil
     if next(notes) == nil then
-        ns.db.notes[mapID] = nil
+        store.notes[mapID] = nil
     end
     ns:RefreshPins()
+end
+
+function ns:CountNotes()
+    local total = 0
+    for _, store in ipairs({ ns.db, ns.charDB }) do
+        for _, notes in pairs(store.notes) do
+            for _ in pairs(notes) do total = total + 1 end
+        end
+    end
+    return total
 end
 
 -- Returns true if a note of the same category and title already sits within
@@ -166,11 +285,7 @@ SlashCmdList.FORGEDFOREVERMAPNOTES = function(input)
         ns.db.debug = not ns.db.debug
         ns:Print("Debug " .. (ns.db.debug and "on." or "off."))
     elseif cmd == "count" then
-        local total = 0
-        for _, notes in pairs(ns.db.notes) do
-            for _ in pairs(notes) do total = total + 1 end
-        end
-        ns:Print(total .. " notes stored.")
+        ns:Print(ns:CountNotes() .. " notes stored.")
     else
         PrintHelp()
     end

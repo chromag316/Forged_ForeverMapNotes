@@ -4,9 +4,11 @@
 ## Author: Chromag
 ## Version: 1.0.1
 ## SavedVariables: ForgedForeverMapNotesDB
+## SavedVariablesPerCharacter: ForgedForeverMapNotesCharDB
 
 Core.lua
 Icons.lua
+Data\KnownNodes.lua
 Pins.lua
 Pins.xml
 Dialogs.lua
