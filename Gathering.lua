@@ -10,6 +10,26 @@ local SPELL_CATEGORIES = {
     ["opening - no text"] = "treasure",
 }
 
+-- "Opening" is also cast on crates, barrels, quest objects, lockboxes, etc.
+-- Only targets whose lowercase name contains one of these count as treasure.
+local TREASURE_KEYWORDS = {
+    "chest",
+    "coffer",
+    "strongbox",
+    "footlocker",
+}
+
+local function IsTreasure(target)
+    if not target or target == "" then return false end
+    local name = target:lower()
+    for _, keyword in ipairs(TREASURE_KEYWORDS) do
+        if name:find(keyword, 1, true) then
+            return true
+        end
+    end
+    return false
+end
+
 -- Two logs of the same node closer than this (normalized map units) are merged.
 local DUPLICATE_RADIUS = 0.005
 
@@ -28,6 +48,10 @@ local function LogGather(target, spellID)
 
     local category = SPELL_CATEGORIES[spellName:lower()]
     if not category then return end
+    if category == "treasure" and not IsTreasure(target) then
+        ns:Debug("not a treasure chest: " .. tostring(target))
+        return
+    end
 
     local mapID, x, y = ns:GetPlayerPosition()
     if not mapID then return end
