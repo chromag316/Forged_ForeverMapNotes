@@ -21,6 +21,7 @@ local DEFAULTS = {
     hidden = {},  -- [categoryKey] = true when hidden on the map
     autoLog = true,
     debug = false,
+    minimap = true, -- show notes on the minimap
     knownBatch = 0, -- last Data/KnownNodes.lua batch imported
 }
 

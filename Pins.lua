@@ -18,10 +18,10 @@ function ForgedForeverMapNotesPinMixin:OnAcquired(mapID, noteID, note)
     self:SetPosition(note.x, note.y)
 end
 
-function ForgedForeverMapNotesPinMixin:OnMouseEnter()
-    local note = self.note
+-- Shared by the world map and minimap pins.
+function ns:ShowNoteTooltip(owner, note)
     local category = ns.CATEGORY_BY_KEY[note.category] or ns.CATEGORY_BY_KEY.note
-    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
     GameTooltip:SetText(note.title ~= "" and note.title or category.label, 1, 1, 1)
     GameTooltip:AddLine(category.label, 0.6, 0.8, 1)
     if note.items then
@@ -36,6 +36,10 @@ function ForgedForeverMapNotesPinMixin:OnMouseEnter()
     GameTooltip:AddLine(("%.1f, %.1f"):format(note.x * 100, note.y * 100), 0.8, 0.8, 0.8)
     GameTooltip:AddLine("Right-click to edit", 0.5, 0.5, 0.5)
     GameTooltip:Show()
+end
+
+function ForgedForeverMapNotesPinMixin:OnMouseEnter()
+    ns:ShowNoteTooltip(self, self.note)
     ns.hoveredPin = self
 end
 
@@ -114,5 +118,8 @@ end
 function ns:RefreshPins()
     if ns.mapReady and WorldMapFrame:IsShown() then
         provider:RefreshAllData()
+    end
+    if ns.RefreshMinimap then
+        ns:RefreshMinimap()
     end
 end

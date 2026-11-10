@@ -13,6 +13,12 @@ local function ShowFilterMenu(owner)
                 function() ns:SetCategoryShown(category.key, not ns:IsCategoryShown(category.key)) end)
         end
         root:CreateDivider()
+        root:CreateCheckbox("Show on minimap",
+            function() return ns.db.minimap end,
+            function()
+                ns.db.minimap = not ns.db.minimap
+                ns:RefreshMinimap()
+            end)
         root:CreateCheckbox("Auto-log gathering and vendors",
             function() return ns.db.autoLog end,
             function() ns.db.autoLog = not ns.db.autoLog end)
