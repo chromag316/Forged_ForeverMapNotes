@@ -98,9 +98,9 @@ end
 -- The game's Find Minerals / Find Herbs dots can't be seen by addons, and
 -- anything we draw covers them. While a category is tracked its notes are
 -- drawn as hollow rings (like GatherMate2's tracking circle), so a node that
--- is up shows as the game's dot inside the ring. Colors match GatherMate2.
+-- is up shows as the game's dot inside the ring.
 local RING_COLORS = {
-    mining = { 1, 0, 0 },
+    mining = { 1, 0.55, 0.1 }, -- warm orange
     herb   = { 0, 1, 0 },
 }
 
