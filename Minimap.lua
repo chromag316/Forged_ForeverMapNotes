@@ -6,6 +6,7 @@ local PIN_SIZE = 12
 local RING_SIZE = 5 -- tracked notes are drawn as a small dot
 local RING_TEXTURE = "Interface\\AddOns\\" .. addonName .. "\\Textures\\Dot"
 local UPDATE_INTERVAL = 0.05 -- seconds between position updates
+local TRACKING_INTERVAL = 1 -- seconds between tracking re-checks
 
 -- Minimap diameter in yards per zoom level (Minimap:GetZoom() + 1).
 local MINIMAP_YARDS = {
@@ -144,15 +145,21 @@ local function UpdateTracking()
     end
 end
 
+local lastTrackingError
+local function SafeUpdateTracking()
+    local ok, err = pcall(UpdateTracking)
+    if not ok and err ~= lastTrackingError then
+        lastTrackingError = err
+        ns:Debug("tracking error: " .. tostring(err))
+    end
+end
+
+-- The tracking state isn't always ready at login/reload and the change event
+-- doesn't always fire, so it's also re-read periodically (see the driver).
 local trackingFrame = CreateFrame("Frame")
 trackingFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
 trackingFrame:RegisterEvent("MINIMAP_UPDATE_TRACKING")
-trackingFrame:SetScript("OnEvent", function()
-    local ok, err = pcall(UpdateTracking)
-    if not ok then
-        ns:Debug("tracking error: " .. tostring(err))
-    end
-end)
+trackingFrame:SetScript("OnEvent", SafeUpdateTracking)
 
 -- Update -------------------------------------------------------------------------
 
@@ -253,12 +260,18 @@ end
 
 local driver = CreateFrame("Frame")
 local elapsed = 0
+local trackingElapsed = 0
 local lastError
 driver:SetScript("OnUpdate", function(self, delta)
     elapsed = elapsed + delta
     if elapsed < UPDATE_INTERVAL then return end
+    trackingElapsed = trackingElapsed + elapsed
     elapsed = 0
     if not (Minimap and Minimap:IsVisible()) then return end
+    if trackingElapsed >= TRACKING_INTERVAL then
+        trackingElapsed = 0
+        SafeUpdateTracking()
+    end
     local ok, err = pcall(UpdatePins)
     if not ok then
         HideAllPins()
