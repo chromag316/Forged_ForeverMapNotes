@@ -3,10 +3,16 @@ local addonName, ns = ...
 -- Shows the notes of the player's current map on the minimap.
 
 local PIN_SIZE = 12
-local RING_SIZE = 5 -- tracked notes are drawn as a small dot
-local RING_TEXTURE = "Interface\\AddOns\\" .. addonName .. "\\Textures\\Dot"
+local DOT_SIZE = 5
+local DOT_TEXTURE = "Interface\\AddOns\\" .. addonName .. "\\Textures\\Dot"
 local UPDATE_INTERVAL = 0.05 -- seconds between position updates
-local TRACKING_INTERVAL = 1 -- seconds between tracking re-checks
+
+-- Mining and herb notes are drawn as small colored dots, like the game's own
+-- Find Minerals / Find Herbs dots; other notes show their icon.
+local DOT_COLORS = {
+    mining = { 0.93, 0.71, 0 }, -- the mining tracking dot's gold
+    herb   = { 0, 1, 0 },
+}
 
 -- Minimap diameter in yards per zoom level (Minimap:GetZoom() + 1).
 local MINIMAP_YARDS = {
@@ -15,8 +21,7 @@ local MINIMAP_YARDS = {
 }
 
 local pins = {}        -- reusable pin frames
-local active = 0       -- pins in use this refresh
-local shown = {}       -- { { mapID, noteID, note }, ... } for the current map
+local shown = {}       -- notes on the current map in shown categories
 local currentMapID     -- map the shown list was built for
 local dirty = true     -- rebuild the shown list on the next update
 local mapSizes = {}    -- [mapID] = { width, height } in yards, or false if unknown
@@ -35,10 +40,10 @@ local function GetPin(index)
         pin:SetFrameLevel(Minimap:GetFrameLevel() + 5)
         pin.Icon = pin:CreateTexture(nil, "ARTWORK")
         pin.Icon:SetAllPoints()
-        pin.Ring = pin:CreateTexture(nil, "ARTWORK")
-        pin.Ring:SetAllPoints()
-        pin.Ring:SetTexture(RING_TEXTURE)
-        pin.Ring:Hide()
+        pin.Dot = pin:CreateTexture(nil, "ARTWORK")
+        pin.Dot:SetAllPoints()
+        pin.Dot:SetTexture(DOT_TEXTURE)
+        pin.Dot:Hide()
         -- Hover only (tooltip); clicks go through to the minimap (e.g. ping).
         pin:EnableMouse(true)
         if pin.SetMouseClickEnabled then
@@ -91,76 +96,6 @@ local function IsSquareMinimap()
     return GetMinimapShape and GetMinimapShape() == "SQUARE"
 end
 
--- Tracking -----------------------------------------------------------------------
-
--- While Find Minerals / Find Herbs is active, that category's notes are drawn
--- as a small colored dot instead of the icon, to blend in with the game's own
--- tracking dots (which addons can't see and always draw over).
-local RING_COLORS = {
-    mining = { 0.93, 0.71, 0 }, -- the mining tracking dot's gold
-    herb   = { 0, 1, 0 },
-}
-
-local TRACKING_NAMES = {
-    ["find minerals"] = "mining",
-    ["find herbs"] = "herb",
-}
-local TRACKING_TEXTURES = {
-    [136025] = "mining", -- Spell_Nature_Earthquake
-    [133939] = "herb",   -- INV_Misc_Flower_02
-    ["interface\\icons\\spell_nature_earthquake"] = "mining",
-    ["interface\\icons\\inv_misc_flower_02"] = "herb",
-}
-
-local tracked = {} -- [category] = true while its tracking is active
-
-local function ClassifyTracking(name, texture)
-    local category = type(name) == "string" and TRACKING_NAMES[name:lower()]
-    if not category and texture then
-        category = TRACKING_TEXTURES[type(texture) == "string" and texture:lower() or texture]
-    end
-    return category
-end
-
-local function UpdateTracking()
-    wipe(tracked)
-    local getNum = (C_Minimap and C_Minimap.GetNumTrackingTypes) or GetNumTrackingTypes
-    local getInfo = (C_Minimap and C_Minimap.GetTrackingInfo) or GetTrackingInfo
-    if getNum and getInfo then
-        for i = 1, getNum() do
-            local name, texture, isActive = getInfo(i)
-            if type(name) == "table" then -- some clients return an info table
-                name, texture, isActive = name.name, name.texture, name.active
-            end
-            local category = isActive and ClassifyTracking(name, texture)
-            if category then
-                tracked[category] = true
-            end
-        end
-    elseif GetTrackingTexture then -- one tracking at a time
-        local category = ClassifyTracking(nil, GetTrackingTexture())
-        if category then
-            tracked[category] = true
-        end
-    end
-end
-
-local lastTrackingError
-local function SafeUpdateTracking()
-    local ok, err = pcall(UpdateTracking)
-    if not ok and err ~= lastTrackingError then
-        lastTrackingError = err
-        ns:Debug("tracking error: " .. tostring(err))
-    end
-end
-
--- The tracking state isn't always ready at login/reload and the change event
--- doesn't always fire, so it's also re-read periodically (see the driver).
-local trackingFrame = CreateFrame("Frame")
-trackingFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
-trackingFrame:RegisterEvent("MINIMAP_UPDATE_TRACKING")
-trackingFrame:SetScript("OnEvent", SafeUpdateTracking)
-
 -- Update -------------------------------------------------------------------------
 
 local function RebuildShown(mapID)
@@ -169,9 +104,9 @@ local function RebuildShown(mapID)
     dirty = false
     local notes = mapID and ns:GetNotes(mapID)
     if not notes then return end
-    for noteID, note in pairs(notes) do
+    for _, note in pairs(notes) do
         if ns:IsCategoryShown(note.category) then
-            shown[#shown + 1] = { mapID, noteID, note }
+            shown[#shown + 1] = note
         end
     end
 end
@@ -206,9 +141,8 @@ local function UpdatePins()
         end
     end
 
-    active = 0
-    for _, entry in ipairs(shown) do
-        local note = entry[3]
+    local active = 0
+    for _, note in ipairs(shown) do
         -- Offset in pixels, x to the east and y to the north.
         local x = (note.x - px) * size[1] * scale
         local y = (py - note.y) * size[2] * scale
@@ -224,19 +158,19 @@ local function UpdatePins()
         if inside then
             active = active + 1
             local pin = GetPin(active)
-            local ring = tracked[note.category] and RING_COLORS[note.category] or nil
-            if pin.note ~= note or pin.ring ~= ring then
-                pin.mapID, pin.noteID, pin.note, pin.ring = entry[1], entry[2], note, ring
-                if ring then
-                    pin:SetSize(RING_SIZE, RING_SIZE)
-                    pin.Ring:SetVertexColor(ring[1], ring[2], ring[3])
-                    pin.Ring:Show()
+            if pin.note ~= note then
+                pin.note = note
+                local dot = DOT_COLORS[note.category]
+                if dot then
+                    pin:SetSize(DOT_SIZE, DOT_SIZE)
+                    pin.Dot:SetVertexColor(dot[1], dot[2], dot[3])
+                    pin.Dot:Show()
                     pin.Icon:Hide()
                 else
                     pin:SetSize(PIN_SIZE, PIN_SIZE)
                     pin.Icon:SetTexture(ns:GetNoteIcon(note))
                     pin.Icon:Show()
-                    pin.Ring:Hide()
+                    pin.Dot:Hide()
                 end
             end
             pin:ClearAllPoints()
@@ -260,18 +194,12 @@ end
 
 local driver = CreateFrame("Frame")
 local elapsed = 0
-local trackingElapsed = 0
 local lastError
 driver:SetScript("OnUpdate", function(self, delta)
     elapsed = elapsed + delta
     if elapsed < UPDATE_INTERVAL then return end
-    trackingElapsed = trackingElapsed + elapsed
     elapsed = 0
     if not (Minimap and Minimap:IsVisible()) then return end
-    if trackingElapsed >= TRACKING_INTERVAL then
-        trackingElapsed = 0
-        SafeUpdateTracking()
-    end
     local ok, err = pcall(UpdatePins)
     if not ok then
         HideAllPins()
