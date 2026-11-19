@@ -23,13 +23,7 @@ local mapSizes = {}    -- [mapID] = { width, height } in yards, or false if unkn
 -- Pin frames -------------------------------------------------------------------
 
 local function OnPinEnter(self)
-    ns:ShowNoteTooltip(self, self.note)
-end
-
-local function OnPinMouseUp(self, button)
-    if button == "RightButton" then
-        ns:ShowEditDialog(self.mapID, self.noteID)
-    end
+    ns:ShowNoteTooltip(self, self.note, true)
 end
 
 local function GetPin(index)
@@ -44,10 +38,13 @@ local function GetPin(index)
         pin.Ring:SetAllPoints()
         pin.Ring:SetTexture(RING_TEXTURE)
         pin.Ring:Hide()
+        -- Hover only (tooltip); clicks go through to the minimap (e.g. ping).
         pin:EnableMouse(true)
+        if pin.SetMouseClickEnabled then
+            pin:SetMouseClickEnabled(false)
+        end
         pin:SetScript("OnEnter", OnPinEnter)
         pin:SetScript("OnLeave", GameTooltip_Hide)
-        pin:SetScript("OnMouseUp", OnPinMouseUp)
         pins[index] = pin
     end
     return pin
