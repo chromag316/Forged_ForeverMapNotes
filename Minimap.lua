@@ -87,6 +87,68 @@ local function IsSquareMinimap()
     return GetMinimapShape and GetMinimapShape() == "SQUARE"
 end
 
+-- Tracking -----------------------------------------------------------------------
+
+-- The game's Find Minerals / Find Herbs dots can't be seen by addons, and
+-- anything we draw covers them. Like GatherMate2's "tracking distance", a
+-- tracked category's notes are hidden within this range of the player: a node
+-- that is up there shows as the game's own dot instead.
+local TRACKING_RANGE_YARDS = 100
+
+local TRACKING_NAMES = {
+    ["find minerals"] = "mining",
+    ["find herbs"] = "herb",
+}
+local TRACKING_TEXTURES = {
+    [136025] = "mining", -- Spell_Nature_Earthquake
+    [133939] = "herb",   -- INV_Misc_Flower_02
+    ["interface\\icons\\spell_nature_earthquake"] = "mining",
+    ["interface\\icons\\inv_misc_flower_02"] = "herb",
+}
+
+local tracked = {} -- [category] = true while its tracking is active
+
+local function ClassifyTracking(name, texture)
+    local category = type(name) == "string" and TRACKING_NAMES[name:lower()]
+    if not category and texture then
+        category = TRACKING_TEXTURES[type(texture) == "string" and texture:lower() or texture]
+    end
+    return category
+end
+
+local function UpdateTracking()
+    wipe(tracked)
+    local getNum = (C_Minimap and C_Minimap.GetNumTrackingTypes) or GetNumTrackingTypes
+    local getInfo = (C_Minimap and C_Minimap.GetTrackingInfo) or GetTrackingInfo
+    if getNum and getInfo then
+        for i = 1, getNum() do
+            local name, texture, isActive = getInfo(i)
+            if type(name) == "table" then -- some clients return an info table
+                name, texture, isActive = name.name, name.texture, name.active
+            end
+            local category = isActive and ClassifyTracking(name, texture)
+            if category then
+                tracked[category] = true
+            end
+        end
+    elseif GetTrackingTexture then -- one tracking at a time
+        local category = ClassifyTracking(nil, GetTrackingTexture())
+        if category then
+            tracked[category] = true
+        end
+    end
+end
+
+local trackingFrame = CreateFrame("Frame")
+trackingFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+trackingFrame:RegisterEvent("MINIMAP_UPDATE_TRACKING")
+trackingFrame:SetScript("OnEvent", function()
+    local ok, err = pcall(UpdateTracking)
+    if not ok then
+        ns:Debug("tracking error: " .. tostring(err))
+    end
+end)
+
 -- Update -------------------------------------------------------------------------
 
 local function RebuildShown(mapID)
@@ -118,6 +180,7 @@ local function UpdatePins()
         return
     end
 
+    local trackRange2 = TRACKING_RANGE_YARDS * TRACKING_RANGE_YARDS
     local radius = Minimap:GetWidth() / 2
     local scale = Minimap:GetWidth() / GetMinimapYards() -- pixels per yard
     local square = IsSquareMinimap()
@@ -135,17 +198,22 @@ local function UpdatePins()
     active = 0
     for _, entry in ipairs(shown) do
         local note = entry[3]
-        -- Offset in pixels, x to the east and y to the north.
-        local x = (note.x - px) * size[1] * scale
-        local y = (py - note.y) * size[2] * scale
-        if rotate then
-            x, y = x * cos + y * sin, y * cos - x * sin
-        end
+        -- Offset in yards, x to the east and y to the north.
+        local x = (note.x - px) * size[1]
+        local y = (py - note.y) * size[2]
         local inside
-        if square then
-            inside = math.abs(x) <= radius and math.abs(y) <= radius
+        if tracked[note.category] and x * x + y * y <= trackRange2 then
+            inside = false -- leave room for the game's tracking dot
         else
-            inside = x * x + y * y <= radius * radius
+            x, y = x * scale, y * scale -- to pixels
+            if rotate then
+                x, y = x * cos + y * sin, y * cos - x * sin
+            end
+            if square then
+                inside = math.abs(x) <= radius and math.abs(y) <= radius
+            else
+                inside = x * x + y * y <= radius * radius
+            end
         end
         if inside then
             active = active + 1
