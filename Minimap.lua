@@ -3,6 +3,8 @@ local addonName, ns = ...
 -- Shows the notes of the player's current map on the minimap.
 
 local PIN_SIZE = 12
+local RING_SIZE = 14
+local RING_TEXTURE = "Interface\\AddOns\\" .. addonName .. "\\Textures\\Ring"
 local UPDATE_INTERVAL = 0.05 -- seconds between position updates
 
 -- Minimap diameter in yards per zoom level (Minimap:GetZoom() + 1).
@@ -38,6 +40,10 @@ local function GetPin(index)
         pin:SetFrameLevel(Minimap:GetFrameLevel() + 5)
         pin.Icon = pin:CreateTexture(nil, "ARTWORK")
         pin.Icon:SetAllPoints()
+        pin.Ring = pin:CreateTexture(nil, "ARTWORK")
+        pin.Ring:SetAllPoints()
+        pin.Ring:SetTexture(RING_TEXTURE)
+        pin.Ring:Hide()
         pin:EnableMouse(true)
         pin:SetScript("OnEnter", OnPinEnter)
         pin:SetScript("OnLeave", GameTooltip_Hide)
@@ -90,10 +96,13 @@ end
 -- Tracking -----------------------------------------------------------------------
 
 -- The game's Find Minerals / Find Herbs dots can't be seen by addons, and
--- anything we draw covers them. Like GatherMate2's "tracking distance", a
--- tracked category's notes are hidden within this range of the player: a node
--- that is up there shows as the game's own dot instead.
-local TRACKING_RANGE_YARDS = 100
+-- anything we draw covers them. While a category is tracked its notes are
+-- drawn as hollow rings (like GatherMate2's tracking circle), so a node that
+-- is up shows as the game's dot inside the ring. Colors match GatherMate2.
+local RING_COLORS = {
+    mining = { 1, 0, 0 },
+    herb   = { 0, 1, 0 },
+}
 
 local TRACKING_NAMES = {
     ["find minerals"] = "mining",
@@ -180,7 +189,6 @@ local function UpdatePins()
         return
     end
 
-    local trackRange2 = TRACKING_RANGE_YARDS * TRACKING_RANGE_YARDS
     local radius = Minimap:GetWidth() / 2
     local scale = Minimap:GetWidth() / GetMinimapYards() -- pixels per yard
     local square = IsSquareMinimap()
@@ -198,29 +206,35 @@ local function UpdatePins()
     active = 0
     for _, entry in ipairs(shown) do
         local note = entry[3]
-        -- Offset in yards, x to the east and y to the north.
-        local x = (note.x - px) * size[1]
-        local y = (py - note.y) * size[2]
+        -- Offset in pixels, x to the east and y to the north.
+        local x = (note.x - px) * size[1] * scale
+        local y = (py - note.y) * size[2] * scale
+        if rotate then
+            x, y = x * cos + y * sin, y * cos - x * sin
+        end
         local inside
-        if tracked[note.category] and x * x + y * y <= trackRange2 then
-            inside = false -- leave room for the game's tracking dot
+        if square then
+            inside = math.abs(x) <= radius and math.abs(y) <= radius
         else
-            x, y = x * scale, y * scale -- to pixels
-            if rotate then
-                x, y = x * cos + y * sin, y * cos - x * sin
-            end
-            if square then
-                inside = math.abs(x) <= radius and math.abs(y) <= radius
-            else
-                inside = x * x + y * y <= radius * radius
-            end
+            inside = x * x + y * y <= radius * radius
         end
         if inside then
             active = active + 1
             local pin = GetPin(active)
-            if pin.note ~= note then
-                pin.mapID, pin.noteID, pin.note = entry[1], entry[2], note
-                pin.Icon:SetTexture(ns:GetNoteIcon(note))
+            local ring = tracked[note.category] and RING_COLORS[note.category] or nil
+            if pin.note ~= note or pin.ring ~= ring then
+                pin.mapID, pin.noteID, pin.note, pin.ring = entry[1], entry[2], note, ring
+                if ring then
+                    pin:SetSize(RING_SIZE, RING_SIZE)
+                    pin.Ring:SetVertexColor(ring[1], ring[2], ring[3])
+                    pin.Ring:Show()
+                    pin.Icon:Hide()
+                else
+                    pin:SetSize(PIN_SIZE, PIN_SIZE)
+                    pin.Icon:SetTexture(ns:GetNoteIcon(note))
+                    pin.Icon:Show()
+                    pin.Ring:Hide()
+                end
             end
             pin:ClearAllPoints()
             pin:SetPoint("CENTER", Minimap, "CENTER", x, y)
