@@ -2,7 +2,7 @@
 ## Title: Forged Forever Map Notes
 ## Notes: Personal map notes and gathering node log for the world map.
 ## Author: Chromag
-## Version: 1.0.1
+## Version: 1.0.2
 ## SavedVariables: ForgedForeverMapNotesDB
 ## SavedVariablesPerCharacter: ForgedForeverMapNotesCharDB
 
