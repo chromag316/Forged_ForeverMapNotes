@@ -15,6 +15,7 @@ and enable it on the character select screen.
 - **Right-click** a note: edit or delete it.
 - Note button in the map's bottom-left corner: show/hide categories, toggle auto-logging.
 - Notes on your current map are also shown on the minimap (toggle in the same menu).
+  Mining and herb notes appear there as small dots, gold and green.
 - Mining, herb and treasure gathers are logged automatically.
 - Vendors that sell recipes are logged when you open their window. The note's
   tooltip lists every recipe seen there. Recipe vendor notes are saved per
