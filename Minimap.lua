@@ -3,7 +3,7 @@ local addonName, ns = ...
 -- Shows the notes of the player's current map on the minimap.
 
 local PIN_SIZE = 12
-local RING_SIZE = 14
+local RING_SIZE = 18 -- room for a dot a few yards off the noted spot
 local RING_TEXTURE = "Interface\\AddOns\\" .. addonName .. "\\Textures\\Ring"
 local UPDATE_INTERVAL = 0.05 -- seconds between position updates
 
@@ -100,7 +100,7 @@ end
 -- drawn as hollow rings (like GatherMate2's tracking circle), so a node that
 -- is up shows as the game's dot inside the ring.
 local RING_COLORS = {
-    mining = { 1, 0.55, 0.1 }, -- warm orange
+    mining = { 0.93, 0.71, 0 }, -- the mining tracking dot's gold
     herb   = { 0, 1, 0 },
 }
 
