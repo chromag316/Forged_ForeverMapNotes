@@ -3,8 +3,8 @@ local addonName, ns = ...
 -- Shows the notes of the player's current map on the minimap.
 
 local PIN_SIZE = 12
-local RING_SIZE = 14
-local RING_TEXTURE = "Interface\\AddOns\\" .. addonName .. "\\Textures\\Ring"
+local RING_SIZE = 6 -- tracked notes are drawn as a small dot
+local RING_TEXTURE = "Interface\\AddOns\\" .. addonName .. "\\Textures\\Dot"
 local UPDATE_INTERVAL = 0.05 -- seconds between position updates
 
 -- Minimap diameter in yards per zoom level (Minimap:GetZoom() + 1).
@@ -92,10 +92,9 @@ end
 
 -- Tracking -----------------------------------------------------------------------
 
--- The game's Find Minerals / Find Herbs dots can't be seen by addons, and
--- anything we draw covers them. While a category is tracked its notes are
--- drawn as hollow rings (like GatherMate2's tracking circle), so a node that
--- is up shows as the game's dot inside the ring.
+-- While Find Minerals / Find Herbs is active, that category's notes are drawn
+-- as a small colored dot instead of the icon, to blend in with the game's own
+-- tracking dots (which addons can't see and always draw over).
 local RING_COLORS = {
     mining = { 0.93, 0.71, 0 }, -- the mining tracking dot's gold
     herb   = { 0, 1, 0 },
