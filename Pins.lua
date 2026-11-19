@@ -18,8 +18,9 @@ function ForgedForeverMapNotesPinMixin:OnAcquired(mapID, noteID, note)
     self:SetPosition(note.x, note.y)
 end
 
--- Shared by the world map and minimap pins.
-function ns:ShowNoteTooltip(owner, note)
+-- Shared by the world map and minimap pins. compact leaves out the
+-- coordinates and the edit hint (used on the minimap).
+function ns:ShowNoteTooltip(owner, note, compact)
     local category = ns.CATEGORY_BY_KEY[note.category] or ns.CATEGORY_BY_KEY.note
     GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
     GameTooltip:SetText(note.title ~= "" and note.title or category.label, 1, 1, 1)
@@ -33,8 +34,10 @@ function ns:ShowNoteTooltip(owner, note)
             GameTooltip:AddLine(name, 1, 0.82, 0)
         end
     end
-    GameTooltip:AddLine(("%.1f, %.1f"):format(note.x * 100, note.y * 100), 0.8, 0.8, 0.8)
-    GameTooltip:AddLine("Right-click to edit", 0.5, 0.5, 0.5)
+    if not compact then
+        GameTooltip:AddLine(("%.1f, %.1f"):format(note.x * 100, note.y * 100), 0.8, 0.8, 0.8)
+        GameTooltip:AddLine("Right-click to edit", 0.5, 0.5, 0.5)
+    end
     GameTooltip:Show()
 end
 
