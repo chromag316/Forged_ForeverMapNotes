@@ -3,7 +3,7 @@ local addonName, ns = ...
 -- Shows the notes of the player's current map on the minimap.
 
 local PIN_SIZE = 12
-local RING_SIZE = 6 -- tracked notes are drawn as a small dot
+local RING_SIZE = 5 -- tracked notes are drawn as a small dot
 local RING_TEXTURE = "Interface\\AddOns\\" .. addonName .. "\\Textures\\Dot"
 local UPDATE_INTERVAL = 0.05 -- seconds between position updates
 
